@@ -1,334 +1,271 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=1024, initial-scale=1.0">
-<title>Log Kegiatan Kerja Firebase (Rev 3)</title>
-<style>
-body { font-family: Arial, sans-serif; background: #f4f6f8; margin:0; padding:20px; }
-h1,h2 { text-align:center; color:#333; }
-.container { width:900px; margin:20px auto; background:white; padding:20px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.1);}
-input, button { width:100%; padding:15px; margin:5px 0; border-radius:8px; border:1px solid #ccc; font-size:18px; }
-button { cursor:pointer; font-weight:bold; border:none; transition:0.3s; }
-.start { background:#4caf50; color:white; }
-.break { background:#ff9800; color:white; }
-.resume { background:#2196f3; color:white; }
-.finish { background:#f44336; color:white; }
-.delete { background:#555; color:white; }
-.export { background:#009688; color:white; }
-.delete-row, .edit-row { padding:4px 8px; border-radius:6px; border:none; cursor:pointer; color:white; }
-.delete-row { background:#d32f2f; }
-.edit-row { background:#1976d2; margin-right:4px; }
-table { width:100%; margin-top:10px; border-collapse:collapse; }
-th, td { border-bottom:1px solid #ddd; padding:8px; text-align:center; }
-th { background-color:#eee; }
-#summary { background:#e8f5e9; padding:10px; border-radius:8px; margin-top:15px; text-align:center; font-weight:bold; color:#2e7d32; }
-#aktif { background:#e3f2fd; color:#0d47a1; border:1px solid #90caf9; padding:10px; border-radius:8px; margin-top:10px; display:none; text-align:center; font-weight:bold; }
-.filter-container { display:flex; gap:10px; align-items:center; margin-top:15px; margin-bottom:10px; }
-.filter-container input[type="date"], .filter-container button { padding:10px; font-size:16px; }
-.filter-container input[type="date"] { flex:1; }
-.logout-btn { background:#f57c00; color:white; padding:10px; border-radius:6px; margin-bottom:10px; }
-</style>
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Kegiatan Kerja</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; }
+    h1 { text-align: center; color: #333; }
+    .container { width: 900px; margin: 20px auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    input, button { width: 100%; padding: 20px; margin: 5px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 20px; }
+    button { cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
+    .start { background: #4caf50; color:white; }
+    .break { background: #ff9800; color:white; }
+    .resume { background: #2196f3; color:white; }
+    .finish { background: #f44336; color:white; }
+    .delete { background: #555; color:white; }
+    .export { background: #009688; color:white; }
+    .delete-row, .edit-row { padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; color: white; }
+    .delete-row { background: #d32f2f; }
+    .edit-row { background: #1976d2; margin-right: 4px; }
+    table { width: 100%; margin-top: 10px; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #eee; }
+    #summary { background: #e8f5e9; padding: 10px; border-radius: 8px; margin-top: 15px; text-align: center; font-weight: bold; color: #2e7d32; }
+    #aktif { background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; text-align: center; font-weight: bold; }
+    .filter-container { display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 10px; }
+    .filter-container input[type="date"], .filter-container button { padding: 10px; font-size: 16px; }
+    .filter-container input[type="date"] { flex: 1; }
+  </style>
 </head>
 <body>
+  <h1>Log Kegiatan Kerja</h1>
 
-<h1>Log Kegiatan Kerja Firebase (Rev 3)</h1>
-
-<!-- Login -->
-<div id="loginContainer" class="container">
-  <h2>Login</h2>
-  <input type="email" id="loginEmail" placeholder="Email...">
-  <input type="password" id="loginPassword" placeholder="Password...">
-  <button onclick="loginUser()">Login</button>
-  <p style="text-align:center;">Belum punya akun? <a href="#" onclick="showRegister()">Daftar</a></p>
-</div>
-
-<!-- Register -->
-<div id="registerContainer" class="container" style="display:none;">
-  <h2>Daftar</h2>
-  <input type="email" id="regEmail" placeholder="Email...">
-  <input type="password" id="regPassword" placeholder="Password...">
-  <button onclick="registerUser()">Daftar</button>
-  <p style="text-align:center;">Sudah punya akun? <a href="#" onclick="showLogin()">Login</a></p>
-</div>
-
-<!-- Main -->
-<div id="mainContainer" class="container" style="display:none;">
-  <h2 id="welcomeUser"></h2>
-  <button class="logout-btn" onclick="logoutUser()">🚪 Logout</button>
-
-  <label for="kegiatan">Kegiatan:</label>
-  <input type="text" id="kegiatan" placeholder="Tulis kegiatan kamu...">
-  <button class="start" onclick="playBeep(700); mulaiKegiatan()">▶️ Start</button>
-  <button class="break" onclick="playBeep(500); istirahat()">☕ Istirahat</button>
-  <button class="resume" onclick="playBeep(800); selesaiIstirahat()">🔵 Selesai Istirahat</button>
-  <button class="finish" onclick="playBeep(900); selesai()">✅ Selesai</button>
-  <button class="delete" onclick="playBeep(400); hapusSemua()">🗑️ Hapus Semua Data</button>
-  <button class="export" onclick="playBeep(1000); eksporCSV()">📤 Ekspor ke CSV</button>
-
-  <div id="aktif"></div>
-  <div id="summary"></div>
-
-  <div class="filter-container">
-    <input type="date" id="filterTanggal">
-    <button onclick="playBeep(600); filterTanggal()">🔍 Tampilkan</button>
-    <button onclick="playBeep(650); tampilkanSemua()">📋 Tampilkan Semua</button>
+  <!-- Auth Section -->
+  <div id="authContainer" class="container">
+    <h2>Daftar / Login</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="registerUser()">Daftar</button>
+    <button onclick="loginUser()">Login</button>
+    <div id="authMsg" style="color:red; margin-top:10px;"></div>
   </div>
 
-  <table id="logTable">
-    <thead>
-      <tr>
-        <th>No.</th>
-        <th>Tanggal</th>
-        <th>Kegiatan</th>
-        <th>Mulai</th>
-        <th>Selesai</th>
-        <th>Durasi</th>
-        <th>Status</th>
-        <th>Aksi</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+  <!-- Main Section -->
+  <div id="mainContainer" class="container" style="display:none;">
+    <div>Selamat datang, <span id="welcomeUser"></span> <button onclick="logoutUser()">Logout</button></div>
+    <label for="kegiatan">Kegiatan:</label>
+    <input type="text" id="kegiatan" placeholder="Tulis kegiatan kamu...">
+    <button class="start" onclick="mulaiKegiatan()">▶️ Start</button>
+    <button class="break" onclick="istirahat()">☕ Istirahat</button>
+    <button class="resume" onclick="selesaiIstirahat()">🔵 Selesai Istirahat</button>
+    <button class="finish" onclick="selesai()">✅ Selesai</button>
+    <button class="delete" onclick="hapusSemua()">🗑️ Hapus Semua Data</button>
+    <button class="export" onclick="eksporCSV()">📤 Ekspor ke CSV</button>
 
-<script>
-// ======================= Firebase Config =======================
-const firebaseConfig = {
-  apiKey: "MASUKKAN_API_KEY_ANDA",
-  authDomain: "PROJECT_ID.firebaseapp.com",
-  projectId: "PROJECT_ID",
-  storageBucket: "PROJECT_ID.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+    <div id="aktif"></div>
+    <div id="summary"></div>
 
-// ======================= Helper =======================
-function playBeep(freq=600,duration=150){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();const g=a.createGain();o.type="sine";o.frequency.value=freq;g.gain.value=0.1;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+duration/1000);}catch(e){}}
-function formatWaktu(d){return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;}
-function formatTanggalISO(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function formatTanggalLokal(d){return d.toLocaleDateString('id-ID',{year:'numeric',month:'long',day:'numeric'});}
+    <div class="filter-container">
+      <input type="date" id="filterTanggal">
+      <button onclick="filterTanggal()">🔍 Tampilkan</button>
+      <button onclick="tampilkanSemua()">📋 Tampilkan Semua</button>
+    </div>
 
-// ======================= Login & Register =======================
-function showRegister(){document.getElementById("loginContainer").style.display="none";document.getElementById("registerContainer").style.display="block";}
-function showLogin(){document.getElementById("registerContainer").style.display="none";document.getElementById("loginContainer").style.display="block";}
+    <table id="logTable">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Tanggal</th>
+          <th>Kegiatan</th>
+          <th>Mulai</th>
+          <th>Selesai</th>
+          <th>Durasi</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
-function registerUser(){
-  const email=document.getElementById("regEmail").value.trim();
-  const password=document.getElementById("regPassword").value.trim();
-  if(!email||!password)return alert("Isi email dan password!");
-  auth.createUserWithEmailAndPassword(email,password)
-  .then(()=>{alert("Registrasi berhasil! Silakan login."); showLogin();})
-  .catch(err=>alert(err.message));
-}
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
 
-function loginUser(){
-  const email=document.getElementById("loginEmail").value.trim();
-  const password=document.getElementById("loginPassword").value.trim();
-  if(!email||!password)return alert("Isi email dan password!");
-  auth.signInWithEmailAndPassword(email,password)
-  .catch(err=>alert(err.message));
-}
+  <script>
+    // ====== Firebase Config (ganti dengan milikmu) ======
+    const firebaseConfig = {
+      apiKey: "AIzaSyAUKZF-5BsyyzPWJgWvS6rw0-vredthTvI",
+      authDomain: "log-kegiatan.firebaseapp.com",
+      projectId: "log-kegiatan",
+      storageBucket: "log-kegiatan.firebasestorage.app",
+      messagingSenderId: "395363028551",
+      appId: "1:395363028551:web:f4e9ff9fc6651f843c2b62"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-function logoutUser(){auth.signOut();}
+    // ====== Auth Functions ======
+    function registerUser(){
+      const email=document.getElementById("email").value;
+      const password=document.getElementById("password").value;
+      auth.createUserWithEmailAndPassword(email,password)
+        .then(userCredential=>{
+          document.getElementById("authMsg").textContent="Daftar berhasil. Silakan login.";
+        })
+        .catch(err=>document.getElementById("authMsg").textContent=err.message);
+    }
 
-// ======================= Main =======================
-let waktuMulai=null, kegiatanAktif=null, status="Belum mulai", waktuIstirahatMulai=null, totalDurasiIstirahat=0, timerInterval=null;
+    function loginUser(){
+      const email=document.getElementById("email").value;
+      const password=document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email,password)
+        .then(userCredential=>{
+          document.getElementById("authContainer").style.display="none";
+          document.getElementById("mainContainer").style.display="block";
+          document.getElementById("welcomeUser").textContent=userCredential.user.email;
+          document.getElementById("filterTanggal").value=formatTanggalISO(new Date());
+          tampilkanDataTerfilter();
+        })
+        .catch(err=>document.getElementById("authMsg").textContent=err.message);
+    }
 
-// ======================= Aktif & Timer =======================
-function tampilkanAktif(){
-  const aktifDiv=document.getElementById("aktif");
-  if(kegiatanAktif){aktifDiv.style.display="block"; updateTimer(); clearInterval(timerInterval); timerInterval=setInterval(updateTimer,1000);}
-  else{aktifDiv.style.display="none"; clearInterval(timerInterval);}
-}
-function updateTimer(){
-  const now=new Date(), durasiMs=now-waktuMulai-totalDurasiIstirahat;
-  const detik=Math.floor(durasiMs/1000);
-  const jam=Math.floor(detik/3600), menit=Math.floor((detik%3600)/60), s=detik%60;
-  document.getElementById("aktif").textContent=`🔵 Kegiatan sedang berlangsung: ${kegiatanAktif} | Durasi: ${jam}j ${menit}m ${s}d`;
-}
+    function logoutUser(){ auth.signOut().then(()=>{ location.reload(); }); }
 
-// ======================= Kegiatan =======================
-function mulaiKegiatan(){
-  const kegiatan=document.getElementById("kegiatan").value.trim();
-  if(kegiatanAktif)return alert("Selesaikan dulu kegiatan berjalan.");
-  if(!kegiatan)return alert("Isi nama kegiatan.");
-  waktuMulai=new Date(); kegiatanAktif=kegiatan; totalDurasiIstirahat=0; status="Berjalan"; tampilkanAktif();
-}
-function istirahat(){if(!kegiatanAktif||status!=="Berjalan")return alert("Belum ada kegiatan berjalan."); waktuIstirahatMulai=new Date(); status="Istirahat"; clearInterval(timerInterval); document.getElementById("aktif").textContent=`☕ Sedang istirahat: ${kegiatanAktif}`;}
-function selesaiIstirahat(){if(status!=="Istirahat")return alert("Belum dalam istirahat."); totalDurasiIstirahat+=new Date()-waktuIstirahatMulai; waktuIstirahatMulai=null; status="Berjalan"; tampilkanAktif();}
-// ======================= Firestore & Kegiatan =======================
-let currentUser = null;
+    // ====== Waktu & Kegiatan ======
+    let kegiatanAktif=null, waktuMulai=null, status="Belum mulai", waktuIstirahatMulai=null, totalDurasiIstirahat=0, timerInterval=null;
 
-auth.onAuthStateChanged(user => {
-  if(user){
-    currentUser = user;
-    document.getElementById("loginContainer").style.display="none";
-    document.getElementById("registerContainer").style.display="none";
-    document.getElementById("mainContainer").style.display="block";
-    document.getElementById("welcomeUser").textContent="Selamat datang, "+user.email;
-    document.getElementById("filterTanggal").value=formatTanggalISO(new Date());
-    tampilkanDataTerfilter();
-  } else {
-    currentUser = null;
-    document.getElementById("loginContainer").style.display="block";
-    document.getElementById("mainContainer").style.display="none";
-  }
-});
+    function formatWaktu(date){ return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`; }
+    function formatTanggalISO(date){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
+    function formatTanggalLokal(date){ return date.toLocaleDateString('id-ID', {year:'numeric', month:'long', day:'numeric'}); }
 
-// Simpan kegiatan ke Firestore
-function selesai(){
-  if(!kegiatanAktif||!waktuMulai) return alert("Belum ada kegiatan yang dimulai.");
-  const selesaiWaktu = new Date();
-  const durasiMs = selesaiWaktu - waktuMulai - totalDurasiIstirahat;
-  const detik = Math.floor(durasiMs/1000);
-  const jam = Math.floor(detik/3600), menit = Math.floor((detik%3600)/60), s = detik%60;
-  const data = {
-    userId: currentUser.uid,
-    tanggalISO: formatTanggalISO(waktuMulai),
-    tanggalLokal: formatTanggalLokal(waktuMulai),
-    kegiatan: kegiatanAktif,
-    mulai: formatWaktu(waktuMulai),
-    selesai: formatWaktu(selesaiWaktu),
-    durasiDetik: detik,
-    durasi: `${jam}j ${menit}m ${s}d`,
-    status: "Selesai",
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-  db.collection("logKegiatan").add(data).then(()=>{
-    kegiatanAktif=null; waktuMulai=null; status="Belum mulai"; tampilkanAktif();
-    document.getElementById("kegiatan").value="";
-    tampilkanDataTerfilter();
-  });
-}
+    function tampilkanAktif(){
+      const div = document.getElementById("aktif");
+      if(kegiatanAktif){ div.style.display="block"; updateTimer(); clearInterval(timerInterval); timerInterval=setInterval(updateTimer,1000); }
+      else { div.style.display="none"; clearInterval(timerInterval); }
+    }
 
-// Tampilkan tabel berdasarkan user
-function tambahKeTabel(data, nomor){
-  const tabel = document.querySelector("#logTable tbody");
-  const row = tabel.insertRow();
-  row.dataset.id = data.id;
-  row.insertCell(0).textContent = nomor;
-  row.insertCell(1).textContent = data.tanggalLokal;
-  row.insertCell(2).textContent = data.kegiatan;
-  row.insertCell(3).textContent = data.mulai;
-  row.insertCell(4).textContent = data.selesai;
-  row.insertCell(5).textContent = data.durasi;
-  row.insertCell(6).textContent = data.status;
-  const aksiCell = row.insertCell(7);
-  const editBtn = document.createElement("button");
-  editBtn.textContent="✏️"; editBtn.classList.add("edit-row");
-  editBtn.onclick = ()=>{ editKegiatan(data.id, data.kegiatan); playBeep(750); };
-  const deleteBtn = document.createElement("button");
-  deleteBtn.textContent="❌"; deleteBtn.classList.add("delete-row");
-  deleteBtn.onclick = ()=>{ hapusSatu(data.id); playBeep(450); };
-  aksiCell.appendChild(editBtn); aksiCell.appendChild(deleteBtn);
-}
+    function updateTimer(){
+      const now=new Date();
+      const durasiMs = now - waktuMulai - totalDurasiIstirahat;
+      const detikTotal=Math.floor(durasiMs/1000);
+      const jam=Math.floor(detikTotal/3600), menit=Math.floor((detikTotal%3600)/60), detik=detikTotal%60;
+      document.getElementById("aktif").textContent=`🔵 Kegiatan: ${kegiatanAktif} | Durasi: ${jam}j ${menit}m ${detik}s`;
+    }
 
-// Edit kegiatan
-function editKegiatan(docId, oldKegiatan){
-  const newKegiatan = prompt("Edit nama kegiatan:", oldKegiatan);
-  if(newKegiatan && newKegiatan.trim()!==""){
-    db.collection("logKegiatan").doc(docId).update({kegiatan:newKegiatan.trim()})
-    .then(()=>tampilkanDataTerfilter());
-  }
-}
+    function mulaiKegiatan(){
+      const kegiatan=document.getElementById("kegiatan").value.trim();
+      if(!kegiatan) return alert("Isi nama kegiatan.");
+      if(kegiatanAktif) return alert("Selesaikan dulu kegiatan aktif.");
+      waktuMulai=new Date(); kegiatanAktif=kegiatan; totalDurasiIstirahat=0; status="Berjalan"; tampilkanAktif();
+    }
+    function istirahat(){ if(!kegiatanAktif||status!=="Berjalan") return alert("Belum ada kegiatan berjalan."); waktuIstirahatMulai=new Date(); status="Istirahat"; clearInterval(timerInterval); document.getElementById("aktif").textContent=`☕ Istirahat dari ${kegiatanAktif}`; }
+    function selesaiIstirahat(){ if(status!=="Istirahat") return alert("Belum istirahat."); totalDurasiIstirahat+=new Date()-waktuIstirahatMulai; waktuIstirahatMulai=null; status="Berjalan"; tampilkanAktif(); }
 
-// Hapus satu kegiatan
-function hapusSatu(docId){
-  if(confirm("Yakin ingin menghapus data ini?")){
-    db.collection("logKegiatan").doc(docId).delete().then(()=>tampilkanDataTerfilter());
-  }
-}
+    function selesai(){
+      if(!kegiatanAktif||!waktuMulai) return alert("Belum ada kegiatan dimulai.");
+      const selesaiWaktu=new Date();
+      const durasiMs = selesaiWaktu - waktuMulai - totalDurasiIstirahat;
+      const detikTotal=Math.floor(durasiMs/1000);
+      const jam=Math.floor(detikTotal/3600), menit=Math.floor((detikTotal%3600)/60), detik=detikTotal%60;
 
-// Hapus semua kegiatan user
-function hapusSemua(){
-  if(!confirm("Yakin ingin menghapus semua data kegiatan?")) return;
-  db.collection("logKegiatan").where("userId","==",currentUser.uid).get().then(snapshot=>{
-    const batch = db.batch();
-    snapshot.forEach(doc => batch.delete(doc.ref));
-    batch.commit().then(()=>tampilkanDataTerfilter());
-  });
-}
+      const data={
+        userId: auth.currentUser.uid,
+        tanggalISO: formatTanggalISO(waktuMulai),
+        tanggalLokal: formatTanggalLokal(waktuMulai),
+        kegiatan: kegiatanAktif,
+        mulai: formatWaktu(waktuMulai),
+        selesai: formatWaktu(selesaiWaktu),
+        durasiDetik: detikTotal,
+        durasi: `${jam}j ${menit}m ${detik}s`,
+        status: "Selesai",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
 
-// Tampilkan data sesuai filter tanggal
-function tampilkanDataTerfilter(){
-  const tanggalFilter = document.getElementById("filterTanggal").value || formatTanggalISO(new Date());
-  db.collection("logKegiatan")
-    .where("userId","==",currentUser.uid)
-    .where("tanggalISO","==",tanggalFilter)
-    .orderBy("createdAt")
-    .get()
-    .then(snapshot=>{
-      const tabel = document.querySelector("#logTable tbody");
-      tabel.innerHTML="";
-      let i=1;
-      snapshot.forEach(doc=>{
-        const data = doc.data();
-        data.id = doc.id;
-        tambahKeTabel(data, i++);
+      db.collection("logKegiatan").add(data).then(()=>{
+        kegiatanAktif=null; waktuMulai=null; status="Belum mulai"; tampilkanAktif();
+        document.getElementById("kegiatan").value="";
+        tampilkanDataTerfilter();
       });
-      perbaruiTotalTanggal(tanggalFilter);
-    });
-}
+    }
 
-// Tampilkan semua kegiatan user
-function tampilkanSemua(){
-  db.collection("logKegiatan").where("userId","==",currentUser.uid).orderBy("createdAt")
-  .get().then(snapshot=>{
-    const tabel = document.querySelector("#logTable tbody"); tabel.innerHTML="";
-    let i=1;
-    snapshot.forEach(doc=>{
-      const data = doc.data(); data.id = doc.id;
-      tambahKeTabel(data, i++);
-    });
-    perbaruiTotalTanggal();
-  });
-}
+    // ====== Tabel ======
+    function tambahKeTabel(data, nomor){
+      const tabel=document.querySelector("#logTable tbody");
+      const row=tabel.insertRow(); row.dataset.id=data.id;
+      row.insertCell(0).textContent=nomor;
+      row.insertCell(1).textContent=data.tanggalLokal;
+      row.insertCell(2).textContent=data.kegiatan;
+      row.insertCell(3).textContent=data.mulai;
+      row.insertCell(4).textContent=data.selesai;
+      row.insertCell(5).textContent=data.durasi;
+      row.insertCell(6).textContent=data.status;
+      const aksiCell=row.insertCell(7);
+      const editBtn=document.createElement("button"); editBtn.textContent="✏️"; editBtn.classList.add("edit-row");
+      editBtn.onclick=()=>{ editKegiatan(data.id,data.kegiatan); };
+      const deleteBtn=document.createElement("button"); deleteBtn.textContent="❌"; deleteBtn.classList.add("delete-row");
+      deleteBtn.onclick=()=>{ hapusSatu(data.id); };
+      aksiCell.appendChild(editBtn); aksiCell.appendChild(deleteBtn);
+    }
 
-// Perbarui summary total waktu
-function perbaruiTotalTanggal(tanggal=null){
-  let q = db.collection("logKegiatan").where("userId","==",currentUser.uid);
-  if(tanggal) q = q.where("tanggalISO","==",tanggal);
-  q.get().then(snapshot=>{
-    let totalDetik=0;
-    snapshot.forEach(doc=>{ totalDetik += doc.data().durasiDetik || 0; });
-    const jam = Math.floor(totalDetik/3600), menit=Math.floor((totalDetik%3600)/60), detik=totalDetik%60;
-    const tglObj = tanggal ? new Date(tanggal) : new Date();
-    document.getElementById("summary").textContent=`🗓️ ${formatTanggalLokal(tglObj)} | ⏰ Total Waktu Kerja: ${jam}j ${menit}m ${detik}d`;
-  });
-}
+    function editKegiatan(docId, oldKegiatan){
+      const newKegiatan=prompt("Edit nama kegiatan:", oldKegiatan);
+      if(newKegiatan && newKegiatan.trim()!==""){
+        db.collection("logKegiatan").doc(docId).update({kegiatan:newKegiatan.trim()})
+        .then(()=>tampilkanDataTerfilter());
+      }
+    }
 
-// Filter tombol
-function filterTanggal(){ tampilkanDataTerfilter(); }
+    function hapusSatu(docId){ if(confirm("Yakin hapus?")){ db.collection("logKegiatan").doc(docId).delete().then(()=>tampilkanDataTerfilter()); } }
+    function hapusSemua(){ if(confirm("Yakin hapus semua?")){ db.collection("logKegiatan").where("userId","==",auth.currentUser.uid).get().then(snap=>{ const batch=db.batch(); snap.forEach(d=>batch.delete(d.ref)); batch.commit().then(()=>tampilkanDataTerfilter()); }); } }
 
-// Ekspor CSV
-function eksporCSV(){
-  let tanggalFilter = document.getElementById("filterTanggal").value;
-  let q = db.collection("logKegiatan").where("userId","==",currentUser.uid);
-  if(tanggalFilter) q = q.where("tanggalISO","==",tanggalFilter);
-  q.orderBy("createdAt").get().then(snapshot=>{
-    if(snapshot.empty) return alert("Tidak ada data untuk tanggal tersebut.");
-    const header = ["No.","Tanggal","Kegiatan","Mulai","Selesai","Durasi","Status"];
-    const rows = [];
-    let i=1;
-    snapshot.forEach(doc=>{
-      const d = doc.data();
-      rows.push([i++,d.tanggalLokal,d.kegiatan,d.mulai,d.selesai,d.durasi,d.status]);
-    });
-    const csvContent=[header,...rows].map(e=>e.join(",")).join("\n");
-    const link = document.createElement("a");
-    link.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csvContent);
-    link.download = tanggalFilter?`log_kegiatan_${tanggalFilter}.csv`:"log_kegiatan_semua.csv";
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
-  });
-}
-</script>
+    function tampilkanDataTerfilter(){
+      const tanggal=document.getElementById("filterTanggal").value||formatTanggalISO(new Date());
+      db.collection("logKegiatan").where("userId","==",auth.currentUser.uid)
+        .where("tanggalISO","==",tanggal)
+        .orderBy("createdAt")
+        .get()
+        .then(snapshot=>{
+          const tabel=document.querySelector("#logTable tbody"); tabel.innerHTML="";
+          let i=1;
+          snapshot.forEach(doc=>{ const data=doc.data(); data.id=doc.id; tambahKeTabel(data,i++); });
+          perbaruiTotalTanggal(tanggal);
+        });
+    }
+
+    function tampilkanSemua(){
+      db.collection("logKegiatan").where("userId","==",auth.currentUser.uid).orderBy("createdAt")
+        .get().then(snapshot=>{
+          const tabel=document.querySelector("#logTable tbody"); tabel.innerHTML="";
+          let i=1;
+          snapshot.forEach(doc=>{ const data=doc.data(); data.id=doc.id; tambahKeTabel(data,i++); });
+          perbaruiTotalTanggal();
+        });
+    }
+
+    function perbaruiTotalTanggal(tanggal=null){
+      let q=db.collection("logKegiatan").where("userId","==",auth.currentUser.uid);
+      if(tanggal) q=q.where("tanggalISO","==",tanggal);
+      q.get().then(snapshot=>{
+        let totalDetik=0; snapshot.forEach(doc=>{ totalDetik+=doc.data().durasiDetik||0; });
+        const jam=Math.floor(totalDetik/3600), menit=Math.floor((totalDetik%3600)/60), detik=totalDetik%60;
+        const tglObj=tanggal?new Date(tanggal):new Date();
+        document.getElementById("summary").textContent=`🗓️ ${formatTanggalLokal(tglObj)} | ⏰ Total Waktu Kerja: ${jam}j ${menit}m ${detik}s`;
+      });
+    }
+
+    function filterTanggal(){ tampilkanDataTerfilter(); }
+
+    function eksporCSV(){
+      let tanggal=document.getElementById("filterTanggal").value;
+      let q=db.collection("logKegiatan").where("userId","==",auth.currentUser.uid);
+      if(tanggal) q=q.where("tanggalISO","==",tanggal);
+      q.orderBy("createdAt").get().then(snapshot=>{
+        if(snapshot.empty) return alert("Tidak ada data untuk tanggal ini.");
+        const header=["No.","Tanggal","Kegiatan","Mulai","Selesai","Durasi","Status"];
+        const rows=[]; let i=1;
+        snapshot.forEach(doc=>{ const d=doc.data(); rows.push([i++,d.tanggalLokal,d.kegiatan,d.mulai,d.selesai,d.durasi,d.status]); });
+        const csv=[header,...rows].map(e=>e.join(",")).join("\n");
+        const link=document.createElement("a"); link.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+        link.download=tanggal?`log_kegiatan_${tanggal}.csv`:"log_kegiatan_semua.csv"; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      });
+    }
+
+    window.onload=()=>{ document.getElementById("filterTanggal").value=formatTanggalISO(new Date()); };
+  </script>
 </body>
 </html>
